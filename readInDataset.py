@@ -89,6 +89,24 @@ def readInAnnotations(datasetName, folder):
     # print("returning labelList of length: {}".format(len(labelList)))
     return labelList
 
+def splitDataset(all_images, all_image_labels):
+    training_images, test_images, training_labels, test_labels = train_test_split(all_images, all_image_labels, test_size=0.2)
+    print("training_labels length: {}".format(len(training_labels)))
+    print("test_labels length: {}".format(len(test_labels)))    
+
+    training_classes = []
+    for label in training_labels:
+        if label not in training_classes:
+            training_classes.append(label)
+    test_classes = []
+    for label in test_labels:
+        if label not in test_classes:
+            test_classes.append(label)
+
+    print("training_classes (length={}): {}".format(len(training_classes), training_classes))
+    print("test_classes (length={}): {}".format(len(test_classes), test_classes))
+    return training_images, test_images, training_labels, test_labels, training_classes, test_classes
+
 all_images = []
 all_image_labels = []
 for fn in dataset_names:
@@ -111,26 +129,19 @@ print("all_images size: {}".format(len(all_images)))
 # print("all_image_labels size: {}".format(len(all_image_labels)))
 
 # === split the dataset ===
-training_images, test_images, training_labels, test_labels = train_test_split(all_images, all_image_labels, test_size=0.2, random_state=42)
+training_images, test_images, training_labels, test_labels, training_classes, test_classes = splitDataset(all_images, all_image_labels)
 
-print("training_labels length: {}".format(len(training_labels)))
-print("test_labels length: {}".format(len(test_labels)))
-# print("test_labels: {}".format(test_labels))
+timeout_counter = 0
+while len(training_classes) != len(test_classes):
+    # keep re-spltting until we have equal classes for train/test sets
+    training_images, test_images, training_labels, test_labels, training_classes, test_classes = splitDataset(all_images, all_image_labels)
+    timeout_counter+=1
+    if timeout_counter >= 100:
+        raise Exception('Too many attempts to re-split the dataset. This happens when the train and test datasets cannot be properly split with even number of classes. Consider adding more of each class. Exiting...')
+print('final training_classes: {}'.format(training_classes))
+print('final test_classes: {}'.format(test_classes))
 counter = collections.Counter(test_labels)
-print("counter: {}".format(counter))
-
-# training_classes = set(training_labels)
-training_classes = []
-for label in training_labels:
-    if label not in training_classes:
-        training_classes.append(label)
-# test_classes = set(test_labels)
-test_classes = []
-for label in test_labels:
-    if label not in test_classes:
-        test_classes.append(label)
-print("training_classes (length={}): {}".format(len(training_classes), training_classes))
-print("test_classes (length={}): {}".format(len(test_classes), test_classes))
+print("classes count: {}".format(all_image_labels))
 
 # integer-encode labels so they can be one-hot-encoded
 # https://stackoverflow.com/a/56227965/6476994
