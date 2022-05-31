@@ -26,6 +26,7 @@ def readInImages(datasetName, folder):
                          (None, None, []))[2]  # [] if no file
     # filter out file names that are not JPEGs
     all_image_filenames = [i for i in all_image_filenames if imgRegExp.match(i)]
+    print('all_image_filenames length: {}'.format(len(all_image_filenames)))
     # walk() outputs unordered, so we need to sort
     all_image_filenames.sort()
     # print("all_image_filenames: {}".format(all_image_filenames))
@@ -86,7 +87,7 @@ def readInAnnotations(datasetName, folder):
                     labelList.append(hit_list.replace("\n", ", "))
                 line_count += 1
     # print("returning labelList (length: {}): {}".format(len(labelList), labelList))
-    # print("returning labelList of length: {}".format(len(labelList)))
+    print("returning labelList of length: {}".format(len(labelList)))
     return labelList
 
 def splitDataset(all_images, all_image_labels):
@@ -126,7 +127,7 @@ classes = set(all_image_labels)
 print("all classes (length={}): {}".format(len(classes), classes))
 
 print("all_images size: {}".format(len(all_images)))
-# print("all_image_labels size: {}".format(len(all_image_labels)))
+print("all_image_labels size: {}".format(len(all_image_labels)))
 
 # === split the dataset ===
 training_images, test_images, training_labels, test_labels, training_classes, test_classes = splitDataset(all_images, all_image_labels)
