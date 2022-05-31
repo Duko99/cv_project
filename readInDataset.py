@@ -140,8 +140,15 @@ while len(training_classes) != len(test_classes):
         raise Exception('Too many attempts to re-split the dataset. This happens when the train and test datasets cannot be properly split with even number of classes. Consider adding more of each class. Exiting...')
 print('final training_classes: {}'.format(training_classes))
 print('final test_classes: {}'.format(test_classes))
-counter = collections.Counter(test_labels)
-print("classes count: {}".format(all_image_labels))
+
+counter_all = collections.Counter(all_image_labels)
+print("all classes count: {}".format(counter_all))
+
+counter_train = collections.Counter(training_labels)
+print("train classes count: {}".format(counter_train))
+
+counter_test = collections.Counter(test_labels)
+print("test classes count: {}".format(counter_test))
 
 # integer-encode labels so they can be one-hot-encoded
 # https://stackoverflow.com/a/56227965/6476994
