@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 import re
 import cv2
 import numpy as np
@@ -7,10 +8,13 @@ import csv
 from sklearn.model_selection import train_test_split
 import collections
 from sklearn.preprocessing import LabelEncoder
+import tensorflow as tf
 
 args = sys.argv
 print("args: {}".format(args))
-dataset_names = args[1:len(args)]
+only_read_image_filenames = args[1] == 'true'
+print('only_read_image_filenames? {}'.format(only_read_image_filenames))
+dataset_names = args[2:len(args)]
 print("dataset_names: {}".format(dataset_names))
 
 # === read in dataset and labels ===
@@ -54,6 +58,32 @@ def readInImages(datasetName, folder):
         image_list.append(np.asarray(new_im))
 
     return image_list
+
+def readInImageFilenames(datasetName, folder):
+    print("reading in image filenames for subset: {}".format(folder))
+    imgRegExp = re.compile(r'.*[.](JPG)$')
+    # https://stackoverflow.com/a/3207973
+    all_image_filenames = next(os.walk('data/{}/{}'.format(datasetName, folder)),
+                         (None, None, []))[2]  # [] if no file
+    # filter out file names that are not JPEGs
+    all_image_filenames = [i for i in all_image_filenames if imgRegExp.match(i)]
+    print('all_image_filenames length: {}'.format(len(all_image_filenames)))
+    # walk() outputs unordered, so we need to sort
+    all_image_filenames.sort()
+
+    # add to `all_images` and overwrite current filename with the new unique one
+    # temp_counter = 0
+    all_image_filenames_full_paths = []
+    for fn in all_image_filenames:
+        new_fn = '{}-{}-{}'.format(datasetName, folder, fn)
+        shutil.copy('data/{}/{}/{}'.format(datasetName, folder, fn), 'data/all_images/{}'.format(new_fn))
+        all_image_filenames_full_paths.append(new_fn)
+
+        # temp_counter += 1
+        # if temp_counter >= 2:
+        #     break
+    
+    return all_image_filenames_full_paths
 
 def readInAnnotations(datasetName, folder):
     print("reading in labels for subset: {}".format(folder))
@@ -118,14 +148,19 @@ for fn in dataset_names:
     print("reading in images and labels for dataset: {}".format(fn))
     print("all_folders_for_curr_dataset: {}".format(all_folders_for_curr_dataset))
     
-    for folder in all_folders_for_curr_dataset:   
-        all_images = [*all_images, *readInImages(fn, folder)]
+    for folder in all_folders_for_curr_dataset:
+        if only_read_image_filenames:
+            all_images = [*all_images, *readInImageFilenames(fn, folder)]
+        else:
+            all_images = [*all_images, *readInImages(fn, folder)]
+
         all_image_labels = [*all_image_labels, *readInAnnotations(fn, folder)]
         print("done current subset")
 
 classes = set(all_image_labels)
 print("all classes (length={}): {}".format(len(classes), classes))
 
+# print('all_images: {}'.format(all_images))
 print("all_images size: {}".format(len(all_images)))
 print("all_image_labels size: {}".format(len(all_image_labels)))
 
@@ -159,6 +194,9 @@ training_labels = label_encoder.fit_transform(training_labels)
 test_labels = np.array(test_labels)
 test_labels = label_encoder.fit_transform(test_labels)
 
+# one-hot encode labels
+training_labels = tf.keras.utils.to_categorical(training_labels, num_classes=len(training_classes))
+test_labels = tf.keras.utils.to_categorical(test_labels, num_classes=len(test_classes))
 
 # convert list of numpy arrays to numpy array of numpy arrays
 # https://stackoverflow.com/a/27516930/6476994
@@ -168,3 +206,12 @@ test_images = np.stack(test_images, axis = 0)
 print("done stacking")
 print("training_images shape: {}".format(training_images.shape))
 print("test_images shape: {}".format(test_images.shape))
+
+if only_read_image_filenames:
+    print('saving image filenames and labels in seperate train/test files')
+    # `all_images` will be the filenames if the `only_read_image_filenames` is passed
+    np.save('train_image_filenames.npy', training_images)
+    np.save('test_image_filenames.npy', test_images)
+
+    np.save('train_labels.npy', training_labels)
+    np.save('test_labels.npy', test_labels)
