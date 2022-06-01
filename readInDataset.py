@@ -59,32 +59,6 @@ def readInImages(datasetName, folder):
 
     return image_list
 
-def readInImageFilenames(datasetName, folder):
-    print("reading in image filenames for subset: {}".format(folder))
-    imgRegExp = re.compile(r'.*[.](JPG)$')
-    # https://stackoverflow.com/a/3207973
-    all_image_filenames = next(os.walk('data/{}/{}'.format(datasetName, folder)),
-                         (None, None, []))[2]  # [] if no file
-    # filter out file names that are not JPEGs
-    all_image_filenames = [i for i in all_image_filenames if imgRegExp.match(i)]
-    print('all_image_filenames length: {}'.format(len(all_image_filenames)))
-    # walk() outputs unordered, so we need to sort
-    all_image_filenames.sort()
-
-    # add to `all_images` and overwrite current filename with the new unique one
-    # temp_counter = 0
-    all_image_filenames_full_paths = []
-    for fn in all_image_filenames:
-        new_fn = '{}-{}-{}'.format(datasetName, folder, fn)
-        shutil.copy('data/{}/{}/{}'.format(datasetName, folder, fn), 'data/all_images/{}'.format(new_fn))
-        all_image_filenames_full_paths.append(new_fn)
-
-        # temp_counter += 1
-        # if temp_counter >= 2:
-        #     break
-    
-    return all_image_filenames_full_paths
-
 def readInAnnotations(datasetName, folder):
     print("reading in labels for subset: {}".format(folder))
     labelList = []
