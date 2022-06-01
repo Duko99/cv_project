@@ -1,3 +1,4 @@
 annotations*
 data*
 *.h5
+*.npy
