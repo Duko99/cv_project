@@ -12,8 +12,8 @@ import tensorflow as tf
 
 args = sys.argv
 print("args: {}".format(args))
-only_read_image_filenames = args[1] == 'true'
-print('only_read_image_filenames? {}'.format(only_read_image_filenames))
+using_batch_generator = args[1] == 'true'
+print('using_batch_generator? {}'.format(using_batch_generator))
 dataset_names = args[2:len(args)]
 print("dataset_names: {}".format(dataset_names))
 
@@ -149,10 +149,7 @@ for fn in dataset_names:
     print("all_folders_for_curr_dataset: {}".format(all_folders_for_curr_dataset))
     
     for folder in all_folders_for_curr_dataset:
-        if only_read_image_filenames:
-            all_images = [*all_images, *readInImageFilenames(fn, folder)]
-        else:
-            all_images = [*all_images, *readInImages(fn, folder)]
+        all_images = [*all_images, *readInImages(fn, folder)]
 
         all_image_labels = [*all_image_labels, *readInAnnotations(fn, folder)]
         print("done current subset")
@@ -207,11 +204,11 @@ print("done stacking")
 print("training_images shape: {}".format(training_images.shape))
 print("test_images shape: {}".format(test_images.shape))
 
-if only_read_image_filenames:
-    print('saving image filenames and labels in seperate train/test files')
-    # `all_images` will be the filenames if the `only_read_image_filenames` is passed
-    np.save('train_image_filenames.npy', training_images)
-    np.save('test_image_filenames.npy', test_images)
+if using_batch_generator:
+    print('saving image filenames and labels in separate train/test files')
+    # `all_images` will be the filenames if the `using_batch_generator` is passed
+    np.save('train_image.npy', training_images)
+    np.save('test_image.npy', test_images)
 
     np.save('train_labels.npy', training_labels)
     np.save('test_labels.npy', test_labels)
