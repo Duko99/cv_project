@@ -1,6 +1,7 @@
+# TODO: document code (e.g., function params and returns - JavaDoc style)
+
 import sys
 import os
-import shutil
 import re
 import cv2
 import numpy as np
@@ -20,8 +21,9 @@ print("dataset_names: {}".format(dataset_names))
 # === read in dataset and labels ===
 
 # get the all original output filenames
-def readInImages(datasetName, folder):
+def readInImages(datasetName, folder, illum_flag_list):
     print("reading in images for subset: {}".format(folder))
+    # print('illum_flag_list: {}'.format(illum_flag_list))
     desired_size = 224
     image_list = []
     imgRegExp = re.compile(r'.*[.](JPG)$')
@@ -34,10 +36,21 @@ def readInImages(datasetName, folder):
     # walk() outputs unordered, so we need to sort
     all_image_filenames.sort()
     # print("all_image_filenames: {}".format(all_image_filenames))
-    # print("all_image_filenames length: {}".format(len(all_image_filenames)))
-    for fn in all_image_filenames:
-        # im = Image.open('data/{}/{}'.format(datasetName, fn))
+    # print('illum_flag_list length: {}'.format(len(illum_flag_list)))
+    for fn, illum_flag in zip(all_image_filenames, illum_flag_list):
         im = cv2.imread('data/{}/{}/{}'.format(datasetName, folder, fn))
+        # print('curr im illum_flag: {}'.format(illum_flag))
+
+        # === do image pre-processing ===
+        # equalize the image to boost brightness when the illum flag is set (image was
+        # taken in the dark)
+        # if illum_flag == 'On':
+            # im = equalizeImage(im)
+
+        im = edgeDetectCanny(im)
+
+        # === done image pre-processing
+
         # resize the image to conserve memory, and transform it to be square while
         # maintaining the aspect ration (give it padding):
         # https://jdhao.github.io/2017/11/06/resize-image-to-square-with-padding/#using-opencv
@@ -59,9 +72,28 @@ def readInImages(datasetName, folder):
 
     return image_list
 
+def edgeDetectCanny(im):
+    t1 = 100
+    t2 = 220
+
+    img_cp = im.copy()
+    canny = cv2.Canny(img_cp, t1, t2)
+
+    # apply canny mask onto input image
+    img_cp[canny != 0] = (0, 255, 0)
+    return img_cp
+
+# perform image equalization
+def equalizeImage(im):
+    im_hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
+    im_hsv[:,:,2] = cv2.equalizeHist(im_hsv[:,:,2])
+    im_eq = cv2.cvtColor(im_hsv, cv2.COLOR_HSV2RGB)
+    return im_eq
+
 def readInAnnotations(datasetName, folder):
     print("reading in labels for subset: {}".format(folder))
     labelList = []
+    illum_flag_list = []
     # print('path: data/{}/{}/{}.csv'.format(datasetName, folder, folder))
     # https://realpython.com/python-csv/#reading-csv-files-with-csv
     with open('data/{}/{}/{}.csv'.format(datasetName, folder, folder)) as csv_file:
@@ -89,10 +121,13 @@ def readInAnnotations(datasetName, folder):
                 else:
                     # FIXME: rendundant case?
                     labelList.append(hit_list.replace("\n", ", "))
+                
+                illum_flag_list.append(row[7])
+
                 line_count += 1
     # print("returning labelList (length: {}): {}".format(len(labelList), labelList))
     print("returning labelList of length: {}".format(len(labelList)))
-    return labelList
+    return labelList, illum_flag_list
 
 def splitDataset(all_images, all_image_labels):
     training_images, test_images, training_labels, test_labels = train_test_split(all_images, all_image_labels, test_size=0.2)
@@ -123,9 +158,9 @@ for fn in dataset_names:
     print("all_folders_for_curr_dataset: {}".format(all_folders_for_curr_dataset))
     
     for folder in all_folders_for_curr_dataset:
-        all_images = [*all_images, *readInImages(fn, folder)]
-
-        all_image_labels = [*all_image_labels, *readInAnnotations(fn, folder)]
+        curr_labels, illum_flag_list = readInAnnotations(fn, folder)
+        all_image_labels = [*all_image_labels, *curr_labels]
+        all_images = [*all_images, *readInImages(fn, folder, illum_flag_list)]
         print("done current subset")
 
 classes = set(all_image_labels)
@@ -140,7 +175,7 @@ training_images, test_images, training_labels, test_labels, training_classes, te
 
 timeout_counter = 0
 while len(training_classes) != len(test_classes):
-    # keep re-spltting until we have equal classes for train/test sets
+    # keep re-splitting until we have equal classes for train/test sets
     training_images, test_images, training_labels, test_labels, training_classes, test_classes = splitDataset(all_images, all_image_labels)
     timeout_counter+=1
     if timeout_counter >= 100:
