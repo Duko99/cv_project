@@ -21,7 +21,7 @@ print("dataset_names: {}".format(dataset_names))
 # === read in dataset and labels ===
 
 # get the all original output filenames
-def readInImages(datasetName, folder, illum_flag_list):
+def readInImages(datasetName, folder, illum_flag_list, curr_labels):
     print("reading in images for subset: {}".format(folder))
     # print('illum_flag_list: {}'.format(illum_flag_list))
     desired_size = 224
@@ -37,7 +37,7 @@ def readInImages(datasetName, folder, illum_flag_list):
     all_image_filenames.sort()
     # print("all_image_filenames: {}".format(all_image_filenames))
     # print('illum_flag_list length: {}'.format(len(illum_flag_list)))
-    for fn, illum_flag in zip(all_image_filenames, illum_flag_list):
+    for fn, illum_flag, curr_label in zip(all_image_filenames, illum_flag_list, curr_labels):
         im = cv2.imread('data/{}/{}/{}'.format(datasetName, folder, fn))
         # print('curr im illum_flag: {}'.format(illum_flag))
 
@@ -47,9 +47,10 @@ def readInImages(datasetName, folder, illum_flag_list):
         # if illum_flag == 'On':
             # im = equalizeImage(im)
 
-        im = edgeDetectCanny(im)
+        if curr_label != 'Empty photo':
+            im = edgeDetectCanny(im)
 
-        # === done image pre-processing
+        # === done image pre-processing ===
 
         # resize the image to conserve memory, and transform it to be square while
         # maintaining the aspect ration (give it padding):
@@ -160,7 +161,7 @@ for fn in dataset_names:
     for folder in all_folders_for_curr_dataset:
         curr_labels, illum_flag_list = readInAnnotations(fn, folder)
         all_image_labels = [*all_image_labels, *curr_labels]
-        all_images = [*all_images, *readInImages(fn, folder, illum_flag_list)]
+        all_images = [*all_images, *readInImages(fn, folder, illum_flag_list, curr_labels)]
         print("done current subset")
 
 classes = set(all_image_labels)
