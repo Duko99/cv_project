@@ -74,14 +74,20 @@ def readInImages(datasetName, folder, illum_flag_list, curr_labels):
     return image_list
 
 def edgeDetectCanny(im):
-    t1 = 100
-    t2 = 220
+    t1 = 80
+    t2 = 255
 
     img_cp = im.copy()
+
+    # do Gaussian blur - helps prevent shrubbery being picked up by Canny
+    img_cp = cv2.GaussianBlur(img_cp, (5,5), 0)
+
+    # do Canny edge detection
     canny = cv2.Canny(img_cp, t1, t2)
 
-    # apply canny mask onto input image
-    img_cp[canny != 0] = (0, 255, 0)
+    # apply Canny mask onto input image - lines are red channel as to prevent blending in
+    # with background (mostly plants/trees)
+    img_cp[canny != 0] = (0, 0, 255)
     return img_cp
 
 # perform image equalization
