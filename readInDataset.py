@@ -44,8 +44,8 @@ def readInImages(datasetName, folder, illum_flag_list, curr_labels):
         # === do image pre-processing ===
         # equalize the image to boost brightness when the illum flag is set (image was
         # taken in the dark)
-        # if illum_flag == 'On':
-            # im = equalizeImage(im)
+        if illum_flag == 'On':
+            im = equalizeImage(im)
 
         if curr_label != 'Empty photo':
             im = edgeDetectCanny(im)
