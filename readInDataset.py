@@ -46,9 +46,15 @@ for fn in dataset_names:
     print("all_folders_for_curr_dataset: {}".format(all_folders_for_curr_dataset))
     
     for folder in all_folders_for_curr_dataset:
-        curr_labels, illum_flag_list = readInAnnotations(fn, folder, do_preprocessing)
-        all_image_labels = [*all_image_labels, *curr_labels]
-        all_images = [*all_images, *readInImages(fn, folder, do_preprocessing, illum_flag_list, curr_labels)]
+        if do_preprocessing:
+            curr_labels, illum_flag_list = readInAnnotations(fn, folder, do_preprocessing)
+            all_image_labels = [*all_image_labels, *curr_labels]
+            all_images = [*all_images, *readInImages(fn, folder, do_preprocessing, illum_flag_list, curr_labels)]
+        else:
+            curr_labels = readInAnnotations(fn, folder, do_preprocessing)
+            all_image_labels = [*all_image_labels, *curr_labels]
+            all_images = [*all_images, *readInImages(fn, folder, do_preprocessing)]
+
         print("done current subset")
 
 classes = set(all_image_labels)
