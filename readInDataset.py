@@ -1,102 +1,23 @@
-# TODO: document code (e.g., function params and returns - JavaDoc style)
-
 import sys
 import os
-import re
-import cv2
 import numpy as np
 import csv
 from sklearn.model_selection import train_test_split
 import collections
 from sklearn.preprocessing import LabelEncoder
 import tensorflow as tf
+from readInImages import readInImages
 
 args = sys.argv
 print("args: {}".format(args))
 using_batch_generator = args[1] == 'true'
 print('using_batch_generator? {}'.format(using_batch_generator))
-dataset_names = args[2:len(args)]
+do_preprocessing = args[2] == 'true'
+print('doing pre-processing? {}'.format(do_preprocessing))
+dataset_names = args[3:len(args)]
 print("dataset_names: {}".format(dataset_names))
 
 # === read in dataset and labels ===
-
-# get the all original output filenames
-def readInImages(datasetName, folder, illum_flag_list, curr_labels):
-    print("reading in images for subset: {}".format(folder))
-    # print('illum_flag_list: {}'.format(illum_flag_list))
-    desired_size = 224
-    image_list = []
-    imgRegExp = re.compile(r'.*[.](JPG)$')
-    # https://stackoverflow.com/a/3207973
-    all_image_filenames = next(os.walk('data/{}/{}'.format(datasetName, folder)),
-                         (None, None, []))[2]  # [] if no file
-    # filter out file names that are not JPEGs
-    all_image_filenames = [i for i in all_image_filenames if imgRegExp.match(i)]
-    print('all_image_filenames length: {}'.format(len(all_image_filenames)))
-    # walk() outputs unordered, so we need to sort
-    all_image_filenames.sort()
-    # print("all_image_filenames: {}".format(all_image_filenames))
-    # print('illum_flag_list length: {}'.format(len(illum_flag_list)))
-    for fn, illum_flag, curr_label in zip(all_image_filenames, illum_flag_list, curr_labels):
-        im = cv2.imread('data/{}/{}/{}'.format(datasetName, folder, fn))
-        # print('curr im illum_flag: {}'.format(illum_flag))
-
-        # === do image pre-processing ===
-        # equalize the image to boost brightness when the illum flag is set (image was
-        # taken in the dark)
-        if illum_flag == 'On':
-            im = equalizeImage(im)
-
-        if curr_label != 'Empty photo':
-            im = edgeDetectCanny(im)
-
-        # === done image pre-processing ===
-
-        # resize the image to conserve memory, and transform it to be square while
-        # maintaining the aspect ration (give it padding):
-        # https://jdhao.github.io/2017/11/06/resize-image-to-square-with-padding/#using-opencv
-        old_size = im.shape[:2]
-        ratio = float(desired_size)/max(old_size)
-        new_size = tuple([int(x*ratio) for x in old_size])
-        im = cv2.resize(im, (new_size[1], new_size[0]))
-
-        delta_w = desired_size - new_size[1]
-        delta_h = desired_size - new_size[0]
-        top, bottom = delta_h//2, delta_h-(delta_h//2)
-        left, right = delta_w//2, delta_w-(delta_w//2)
-
-        color = [0, 0, 0]
-        new_im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
-
-        
-        image_list.append(np.asarray(new_im))
-
-    return image_list
-
-def edgeDetectCanny(im):
-    t1 = 80
-    t2 = 255
-
-    img_cp = im.copy()
-
-    # do Gaussian blur - helps prevent shrubbery being picked up by Canny
-    img_cp = cv2.GaussianBlur(img_cp, (5,5), 0)
-
-    # do Canny edge detection
-    canny = cv2.Canny(img_cp, t1, t2)
-
-    # apply Canny mask onto input image - lines are red channel as to prevent blending in
-    # with background (mostly plants/trees)
-    img_cp[canny != 0] = (0, 0, 255)
-    return img_cp
-
-# perform image equalization
-def equalizeImage(im):
-    im_hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
-    im_hsv[:,:,2] = cv2.equalizeHist(im_hsv[:,:,2])
-    im_eq = cv2.cvtColor(im_hsv, cv2.COLOR_HSV2RGB)
-    return im_eq
-
 def readInAnnotations(datasetName, folder):
     print("reading in labels for subset: {}".format(folder))
     labelList = []
@@ -115,8 +36,9 @@ def readInAnnotations(datasetName, folder):
                 # print(f'Column names are {", ".join(row)}')
                 line_count += 1
             else:
-                # print("Image Name: {}. Hit List: {}".format(row[0], row[22].replace("\n", ", ")))
-                # FIXME handle when hitlist contains more than one item (e.g., BB06 IMG_512 has 'kangaroo' and 'empty photo') - sort of handled, need to make more dynamic
+                # FIXME handle when hitlist contains more than one item
+                # (e.g., BB06 IMG_512 has 'kangaroo' and 'empty photo') - sort of
+                # handled, need to make more dynamic
                 hit_list = row[22]
                 # print("hit_list: {}".format(hit_list))
                 if hit_list == '':
@@ -126,7 +48,7 @@ def readInAnnotations(datasetName, folder):
                 elif hit_list == 'Kangaroo\nEmpty photo':
                     labelList.append("Kangaroo")
                 else:
-                    # FIXME: rendundant case?
+                    # FIXME: redundant case?
                     labelList.append(hit_list.replace("\n", ", "))
                 
                 illum_flag_list.append(row[7])
@@ -167,7 +89,7 @@ for fn in dataset_names:
     for folder in all_folders_for_curr_dataset:
         curr_labels, illum_flag_list = readInAnnotations(fn, folder)
         all_image_labels = [*all_image_labels, *curr_labels]
-        all_images = [*all_images, *readInImages(fn, folder, illum_flag_list, curr_labels)]
+        all_images = [*all_images, *readInImages(fn, folder, do_preprocessing, illum_flag_list, curr_labels)]
         print("done current subset")
 
 classes = set(all_image_labels)
