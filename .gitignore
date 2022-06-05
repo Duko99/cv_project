@@ -2,3 +2,4 @@ annotations*
 data*
 *.h5
 *.npy
+__pycache__
